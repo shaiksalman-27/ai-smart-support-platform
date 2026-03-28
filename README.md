@@ -1,3 +1,12 @@
+---
+title: AI Smart Support Platform
+emoji: 🤖
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # OpenEnv SupportOps
 
 OpenEnv SupportOps is a real-world customer support ticket triage environment for training and evaluating AI agents.
