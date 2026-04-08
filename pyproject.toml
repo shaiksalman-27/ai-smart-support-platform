@@ -1,0 +1,8 @@
+[project]
+name = "ai-smart-support"
+version = "0.1.0"
+description = "AI Smart Support & Cybersecurity Assistant"
+authors = ["Shaik Salman"]
+
+[tool.openenv]
+entry_point = "inference.py"
