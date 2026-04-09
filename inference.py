@@ -6,7 +6,7 @@ def run():
     print("[START]")
 
     try:
-        r = requests.post(f"{BASE_URL}/reset")
+        r = requests.post(f"{BASE_URL}/reset", timeout=30)
         print("[STEP]", r.json())
 
         for i in range(3):
@@ -15,7 +15,8 @@ def run():
                 json={
                     "action_type": "respond",
                     "content": f"Test response {i+1}"
-                }
+                },
+                timeout=30,
             )
             print("[STEP]", response.json())
 

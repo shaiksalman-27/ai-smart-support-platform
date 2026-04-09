@@ -5,6 +5,7 @@ description = "AI Smart Support & Cybersecurity Assistant"
 requires-python = ">=3.10"
 dependencies = [
   "openenv-core>=0.2.0",
+  "requests",
 ]
 
 [project.scripts]
