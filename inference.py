@@ -17,22 +17,19 @@ def run():
         payload = {
             "model": MODEL_NAME,
             "messages": [
-                {"role": "user", "content": "Say hello in one short sentence."}
+                {"role": "user", "content": "Hello, just testing the API"}
             ],
-            "max_tokens": 30,
+            "max_tokens": 20,
         }
 
-        response = requests.post(
+        res = requests.post(
             f"{API_BASE_URL}/chat/completions",
             headers=headers,
             json=payload,
             timeout=60,
         )
 
-        print("[STEP]", {
-            "status_code": response.status_code,
-            "response": response.json()
-        })
+        print("[STEP]", res.json())
 
     except Exception as e:
         print("[STEP]", {"error": str(e)})
