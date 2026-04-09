@@ -1,24 +1,38 @@
+import os
 import requests
 
-BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 def run():
     print("[START]")
 
     try:
-        r = requests.post(f"{BASE_URL}/reset", timeout=30)
-        print("[STEP]", r.json())
+        headers = {
+            "Authorization": f"Bearer {HF_TOKEN}",
+            "Content-Type": "application/json",
+        }
 
-        for i in range(3):
-            response = requests.post(
-                f"{BASE_URL}/step",
-                json={
-                    "action_type": "respond",
-                    "content": f"Test response {i+1}"
-                },
-                timeout=30,
-            )
-            print("[STEP]", response.json())
+        payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                {"role": "user", "content": "Say hello in one short sentence."}
+            ],
+            "max_tokens": 30,
+        }
+
+        response = requests.post(
+            f"{API_BASE_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+
+        print("[STEP]", {
+            "status_code": response.status_code,
+            "response": response.json()
+        })
 
     except Exception as e:
         print("[STEP]", {"error": str(e)})
