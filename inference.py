@@ -4,12 +4,19 @@ from openai import OpenAI
 
 LOCAL_BASE_URL = "http://localhost:8000"
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 
 def llm_ping():
+    if not API_BASE_URL:
+        raise RuntimeError("Missing API_BASE_URL")
+    if not MODEL_NAME:
+        raise RuntimeError("Missing MODEL_NAME")
+    if not HF_TOKEN:
+        raise RuntimeError("Missing HF_TOKEN")
+
     client = OpenAI(
         base_url=API_BASE_URL,
         api_key=HF_TOKEN,
@@ -18,7 +25,10 @@ def llm_ping():
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "user", "content": "Reply in one short sentence about support automation."}
+            {
+                "role": "user",
+                "content": "Reply with exactly five words about support automation."
+            }
         ],
         max_tokens=20,
     )
@@ -27,11 +37,15 @@ def llm_ping():
 
 
 def post_json(path, payload):
-    return requests.post(f"{LOCAL_BASE_URL}{path}", json=payload, timeout=30).json()
+    response = requests.post(f"{LOCAL_BASE_URL}{path}", json=payload, timeout=30)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_json(path):
-    return requests.get(f"{LOCAL_BASE_URL}{path}", timeout=30).json()
+    response = requests.get(f"{LOCAL_BASE_URL}{path}", timeout=30)
+    response.raise_for_status()
+    return response.json()
 
 
 def run_task(task_id, actions):
@@ -66,55 +80,50 @@ def run_task(task_id, actions):
 def run():
     print("[START]")
 
-    try:
-        llm_text = llm_ping()
-        print("[STEP]", {"llm_proxy_call": llm_text})
+    llm_text = llm_ping()
+    print("[STEP]", {"llm_proxy_call": llm_text})
 
-        results = []
+    results = []
 
-        results.append(
-            run_task(
-                "easy_password_reset",
-                [
-                    ("classify", "account_access"),
-                    ("set_priority", "low"),
-                    ("resolve", "send_password_reset_steps"),
-                    ("close", ""),
-                ],
-            )
+    results.append(
+        run_task(
+            "easy_password_reset",
+            [
+                ("classify", "account_access"),
+                ("set_priority", "low"),
+                ("resolve", "send_password_reset_steps"),
+                ("close", ""),
+            ],
         )
+    )
 
-        results.append(
-            run_task(
-                "medium_payment_failure",
-                [
-                    ("classify", "billing"),
-                    ("set_priority", "high"),
-                    ("ask_info", "Please share your transaction id."),
-                    ("resolve", "request_transaction_id_and_open_billing_review"),
-                    ("close", ""),
-                ],
-            )
+    results.append(
+        run_task(
+            "medium_payment_failure",
+            [
+                ("classify", "billing"),
+                ("set_priority", "high"),
+                ("ask_info", "Please share your transaction id."),
+                ("resolve", "request_transaction_id_and_open_billing_review"),
+                ("close", ""),
+            ],
         )
+    )
 
-        results.append(
-            run_task(
-                "hard_account_takeover",
-                [
-                    ("classify", "security"),
-                    ("set_priority", "urgent"),
-                    ("ask_info", "Please complete identity verification."),
-                    ("escalate", "security_ops"),
-                    ("close", ""),
-                ],
-            )
+    results.append(
+        run_task(
+            "hard_account_takeover",
+            [
+                ("classify", "security"),
+                ("set_priority", "urgent"),
+                ("ask_info", "Please complete identity verification."),
+                ("escalate", "security_ops"),
+                ("close", ""),
+            ],
         )
+    )
 
-        print("[STEP]", {"summary": results})
-
-    except Exception as e:
-        print("[STEP]", {"error": str(e)})
-
+    print("[STEP]", {"summary": results})
     print("[END]")
 
 
