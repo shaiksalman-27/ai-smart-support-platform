@@ -18,10 +18,7 @@ def llm_ping():
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {
-                "role": "user",
-                "content": "Reply in exactly five words."
-            }
+            {"role": "user", "content": "Reply in exactly five words."}
         ],
         max_tokens=10,
     )
