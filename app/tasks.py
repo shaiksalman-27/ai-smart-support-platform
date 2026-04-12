@@ -76,3 +76,11 @@ TASK_METADATA: List[TaskMetadata] = [
         objective="Classify as security, set urgent priority, request identity verification, escalate to security ops, then close safely.",
     ),
 ]
+
+
+def get_task(task_id: str) -> TicketState:
+    return TASKS[task_id].model_copy(deep=True)
+
+
+def list_tasks() -> List[TaskMetadata]:
+    return TASK_METADATA

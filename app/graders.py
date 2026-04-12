@@ -10,48 +10,61 @@ def grade_episode(state: TicketState) -> GraderResult:
         "safe_completion": 0.0,
     }
 
+    # 1) Category check
     if state.classified_category == state.true_category:
         details["category_correct"] = 0.2
 
+    # 2) Priority check
     if state.assigned_priority == state.true_priority:
         details["priority_correct"] = 0.2
 
+    # 3) Info request check
     if state.required_info_request:
-        required = set(state.required_missing_fields)
-        asked = set(state.asked_info_fields)
-        if required.issubset(asked):
+        required = set(state.required_missing_fields or [])
+        asked = set(state.asked_info_fields or [])
+
+        if required and required.issubset(asked):
             details["info_request_correct"] = 0.2
+        elif asked:
+            details["info_request_correct"] = 0.1
     else:
         details["info_request_correct"] = 0.2
 
-    if state.expected_resolution and state.resolution_given == state.expected_resolution:
-        details["resolution_or_escalation_correct"] = 0.2
+    # 4) Resolution / escalation check
+    if state.expected_resolution:
+        if state.resolution_given == state.expected_resolution:
+            details["resolution_or_escalation_correct"] = 0.2
+    elif state.expected_escalation_team:
+        if state.escalated_to == state.expected_escalation_team:
+            details["resolution_or_escalation_correct"] = 0.2
 
-    if state.expected_escalation_team and state.escalated_to == state.expected_escalation_team:
-        details["resolution_or_escalation_correct"] = 0.2
-
+    # 5) Safe completion check
     safe_completion = False
 
     if state.expected_resolution:
         if state.resolution_given == state.expected_resolution and state.closed:
             safe_completion = True
 
-    if state.expected_escalation_team:
+    elif state.expected_escalation_team:
         required_info_ok = True
         if state.required_info_request:
-            required_info_ok = set(state.required_missing_fields).issubset(set(state.asked_info_fields))
+            required_info_ok = set(state.required_missing_fields or []).issubset(
+                set(state.asked_info_fields or [])
+            )
+
         if state.escalated_to == state.expected_escalation_team and state.closed and required_info_ok:
             safe_completion = True
 
-    if not state.unsafe_to_close_early and state.closed:
-        safe_completion = True
+    else:
+        if state.closed and not state.unsafe_to_close_early:
+            safe_completion = True
 
     if safe_completion:
         details["safe_completion"] = 0.2
 
     raw_score = round(sum(details.values()), 3)
 
-    # Hackathon rule: score must be strictly between 0 and 1
+    # Keep final score strictly between 0 and 1 for hackathon validation
     if raw_score <= 0.0:
         total_score = 0.1
     elif raw_score >= 1.0:
