@@ -5,8 +5,8 @@ from openai import OpenAI
 LOCAL_BASE_URL = "http://localhost:8000"
 
 API_BASE_URL = os.environ["API_BASE_URL"].rstrip("/")
-MODEL_NAME = os.environ["MODEL_NAME"]
-HF_TOKEN = os.environ["HF_TOKEN"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 
 if not API_BASE_URL.endswith("/v1"):
     API_BASE_URL = f"{API_BASE_URL}/v1"
@@ -14,17 +14,14 @@ if not API_BASE_URL.endswith("/v1"):
 
 def llm_ping():
     client = OpenAI(
-        api_key=HF_TOKEN,
         base_url=API_BASE_URL,
+        api_key=API_KEY,
     )
 
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {
-                "role": "user",
-                "content": "Reply in exactly five words."
-            }
+            {"role": "user", "content": "Reply in exactly five words."}
         ],
         max_tokens=10,
     )
@@ -69,7 +66,7 @@ def run():
     print("[START]")
 
     llm_text = llm_ping()
-    print("[STEP]", {"llm_proxy_call": llm_text, "api_base_url": API_BASE_URL})
+    print("[STEP]", {"llm_proxy_call": llm_text})
 
     run_task(
         "easy_password_reset",
