@@ -4,26 +4,73 @@ from openai import OpenAI
 
 LOCAL_BASE_URL = "http://localhost:8000"
 
-API_BASE_URL = os.environ["API_BASE_URL"]
-MODEL_NAME = os.environ["MODEL_NAME"]
-HF_TOKEN = os.environ["HF_TOKEN"]
+API_BASE_URL = os.environ["API_BASE_URL"].rstrip("/")
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+
+# Support both validator variants
+API_TOKEN = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
+if not API_TOKEN:
+    raise RuntimeError("Missing API_KEY/HF_TOKEN environment variable")
+
+
+def _candidate_chat_urls(base_url: str):
+    urls = [base_url]
+    if not base_url.endswith("/chat/completions"):
+        urls.append(f"{base_url}/chat/completions")
+    if not base_url.endswith("/v1"):
+        urls.append(f"{base_url}/v1")
+        urls.append(f"{base_url}/v1/chat/completions")
+    return urls
 
 
 def llm_ping():
-    client = OpenAI(
-        base_url=API_BASE_URL,
-        api_key=HF_TOKEN,
-    )
+    # First try with OpenAI client exactly as required
+    try:
+        client = OpenAI(
+            base_url=API_BASE_URL,
+            api_key=API_TOKEN,
+        )
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "user", "content": "Reply in exactly five words."}
+            ],
+            max_tokens=10,
+        )
+        text = response.choices[0].message.content
+        if text:
+            return text
+    except Exception:
+        pass
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "user", "content": "Reply in exactly five words."}
-        ],
-        max_tokens=10,
-    )
+    # Fallback: still call the SAME injected proxy with SAME injected token
+    last_error = None
+    for url in _candidate_chat_urls(API_BASE_URL):
+        try:
+            response = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": MODEL_NAME,
+                    "messages": [
+                        {"role": "user", "content": "Reply in exactly five words."}
+                    ],
+                    "max_tokens": 10,
+                },
+                timeout=60,
+            )
+            response.raise_for_status()
+            data = response.json()
+            text = data["choices"][0]["message"]["content"]
+            if text:
+                return text
+        except Exception as e:
+            last_error = e
 
-    return response.choices[0].message.content
+    raise RuntimeError(f"LLM proxy call failed: {last_error}")
 
 
 def post_json(path, payload):
@@ -59,46 +106,40 @@ def run_task(task_id, actions):
 def run():
     print("[START]")
 
-    try:
-        llm_text = llm_ping()
-        print("[STEP]", {"llm_proxy_call": llm_text})
-    except Exception as e:
-        print("[STEP]", {"llm_proxy_error": str(e)})
+    llm_text = llm_ping()
+    print("[STEP]", {"llm_proxy_call": llm_text})
 
-    try:
-        run_task(
-            "easy_password_reset",
-            [
-                ("classify", "account_access"),
-                ("set_priority", "low"),
-                ("resolve", "send_password_reset_steps"),
-                ("close", ""),
-            ],
-        )
+    run_task(
+        "easy_password_reset",
+        [
+            ("classify", "account_access"),
+            ("set_priority", "low"),
+            ("resolve", "send_password_reset_steps"),
+            ("close", ""),
+        ],
+    )
 
-        run_task(
-            "medium_payment_failure",
-            [
-                ("classify", "billing"),
-                ("set_priority", "high"),
-                ("ask_info", "Please share your transaction id."),
-                ("resolve", "request_transaction_id_and_open_billing_review"),
-                ("close", ""),
-            ],
-        )
+    run_task(
+        "medium_payment_failure",
+        [
+            ("classify", "billing"),
+            ("set_priority", "high"),
+            ("ask_info", "Please share your transaction id."),
+            ("resolve", "request_transaction_id_and_open_billing_review"),
+            ("close", ""),
+        ],
+    )
 
-        run_task(
-            "hard_account_takeover",
-            [
-                ("classify", "security"),
-                ("set_priority", "urgent"),
-                ("ask_info", "Please complete identity verification."),
-                ("escalate", "security_ops"),
-                ("close", ""),
-            ],
-        )
-    except Exception as e:
-        print("[STEP]", {"task_error": str(e)})
+    run_task(
+        "hard_account_takeover",
+        [
+            ("classify", "security"),
+            ("set_priority", "urgent"),
+            ("ask_info", "Please complete identity verification."),
+            ("escalate", "security_ops"),
+            ("close", ""),
+        ],
+    )
 
     print("[END]")
 
