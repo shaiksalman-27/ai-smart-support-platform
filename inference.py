@@ -5,14 +5,14 @@ from openai import OpenAI
 LOCAL_BASE_URL = "http://localhost:8000"
 
 API_BASE_URL = os.environ["API_BASE_URL"]
-API_KEY = os.environ["API_KEY"]
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+MODEL_NAME = os.environ["MODEL_NAME"]
+HF_TOKEN = os.environ["HF_TOKEN"]
 
 
 def llm_ping():
     client = OpenAI(
         base_url=API_BASE_URL,
-        api_key=API_KEY,
+        api_key=HF_TOKEN,
     )
 
     response = client.chat.completions.create(
@@ -59,40 +59,46 @@ def run_task(task_id, actions):
 def run():
     print("[START]")
 
-    llm_text = llm_ping()
-    print("[STEP]", {"llm_proxy_call": llm_text})
+    try:
+        llm_text = llm_ping()
+        print("[STEP]", {"llm_proxy_call": llm_text})
+    except Exception as e:
+        print("[STEP]", {"llm_proxy_error": str(e)})
 
-    run_task(
-        "easy_password_reset",
-        [
-            ("classify", "account_access"),
-            ("set_priority", "low"),
-            ("resolve", "send_password_reset_steps"),
-            ("close", ""),
-        ],
-    )
+    try:
+        run_task(
+            "easy_password_reset",
+            [
+                ("classify", "account_access"),
+                ("set_priority", "low"),
+                ("resolve", "send_password_reset_steps"),
+                ("close", ""),
+            ],
+        )
 
-    run_task(
-        "medium_payment_failure",
-        [
-            ("classify", "billing"),
-            ("set_priority", "high"),
-            ("ask_info", "Please share your transaction id."),
-            ("resolve", "request_transaction_id_and_open_billing_review"),
-            ("close", ""),
-        ],
-    )
+        run_task(
+            "medium_payment_failure",
+            [
+                ("classify", "billing"),
+                ("set_priority", "high"),
+                ("ask_info", "Please share your transaction id."),
+                ("resolve", "request_transaction_id_and_open_billing_review"),
+                ("close", ""),
+            ],
+        )
 
-    run_task(
-        "hard_account_takeover",
-        [
-            ("classify", "security"),
-            ("set_priority", "urgent"),
-            ("ask_info", "Please complete identity verification."),
-            ("escalate", "security_ops"),
-            ("close", ""),
-        ],
-    )
+        run_task(
+            "hard_account_takeover",
+            [
+                ("classify", "security"),
+                ("set_priority", "urgent"),
+                ("ask_info", "Please complete identity verification."),
+                ("escalate", "security_ops"),
+                ("close", ""),
+            ],
+        )
+    except Exception as e:
+        print("[STEP]", {"task_error": str(e)})
 
     print("[END]")
 
